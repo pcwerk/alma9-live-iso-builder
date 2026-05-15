@@ -1,0 +1,8 @@
+# users.conf.example - sample of what snapshot.sh generates
+# Format: username:uid:shell:groups:password
+#   - groups is a comma-separated list; first entry is the primary group
+#   - password "CHANGE_ME" MUST be replaced before running build-iso.sh
+# Lines beginning with # are ignored.
+
+localadmin:1000:/bin/bash:localadmin,wheel:CHANGE_ME
+operator:1001:/bin/bash:operator,dialout:CHANGE_ME

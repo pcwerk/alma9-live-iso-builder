@@ -1,0 +1,6 @@
+data/
+*.iso
+*.log
+build-inputs/
+claude/
+CLAUDE.md

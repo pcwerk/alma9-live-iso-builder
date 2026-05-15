@@ -1,0 +1,11 @@
+# Example boot-config.conf - copy to ../config/boot-config.conf and edit
+# before running customize-boot.sh.
+
+plymouth_theme=spinner
+plymouth_custom_theme_dir=
+grub_timeout=2
+grub_background=/usr/share/backgrounds/default.png
+show_kernel_messages=false
+show_progress_bar=true
+splash_resolution=1920x1080
+boot_quiet=true

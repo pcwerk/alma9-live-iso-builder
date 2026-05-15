@@ -1,0 +1,10 @@
+# policy.conf.example - sample of what snapshot.sh generates
+# Mirrors the system-wide defaults from the spec.
+
+screen_blank_timeout_seconds=300
+screen_lock_enabled=true
+auto_lockout_timeout_seconds=600
+suspend_enabled=false
+screensaver_enabled=true
+gdm_autologin_enabled=false
+gdm_autologin_user=

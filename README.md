@@ -5,6 +5,76 @@ reference system. The ISO boots entirely into RAM (`rd.live.ram=1`) so the
 USB drive can be removed once the boot completes. No persistence — every
 runtime change is discarded on reboot.
 
+## How it works
+
+You need two machines on the same network:
+
+- A **builder host** with Docker installed (Linux or macOS — anything
+  that can run an `almalinux:9` container). This is where the final ISO
+  is produced.
+- A **reference machine** (bare metal or VM) where you install
+  AlmaLinux 9 from scratch and configure it to look exactly like what
+  end users should boot into: installed packages, dotfiles, wallpaper,
+  autologin, custom Plymouth theme, etc.
+
+The build is a handoff between the two. The builder host runs
+`scripts/builder-host.sh`, which serves every needed artifact over plain
+HTTP at the project root and prints copy-paste commands with the
+builder's LAN IP already filled in. The reference machine pulls those
+artifacts on demand, and the final snapshot travels back via `scp`:
+
+```
+  ┌──────────────┐                            ┌────────────────────┐
+  │ Reference VM │ 1. inst.ks=…/baseline.ks   │ Builder host       │
+  │              │◄──────── HTTP ─────────────│ (python -m         │
+  │  AlmaLinux 9 │                            │  http.server +     │
+  │  installer   │ 2. customize-boot.sh,      │  Docker + lorax)   │
+  │      +       │    snapshot.sh,            │                    │
+  │  customized  │    boot-config.conf        │                    │
+  │  desktop     │◄──────── HTTP ─────────────│                    │
+  │              │                            │ 4. build-iso.sh    │
+  │              │ 3. snapshot tarball,       │    → live ISO in   │
+  │              │    users.conf, policy.conf │      data/output/  │
+  │              │─────────  scp  ───────────►│                    │
+  └──────────────┘                            └────────────────────┘
+```
+
+The stages (machine each step runs on shown in brackets):
+
+1. *[Builder Machine]* **Serve.** Run `scripts/builder-host.sh`. It
+   starts a `python3 -m http.server` at the project root, makes a
+   `data/dropbox/` directory, and prints the URLs and `scp` line the
+   reference machine will need.
+2. *[Reference Machine]* **Provision.** Boot the AlmaLinux 9 installer
+   with `inst.ks=http://<builder>/kickstart/baseline.ks`. The kickstart
+   installs a minimal GNOME desktop, creates a `localadmin` user, and
+   reboots.
+3. *[Reference Machine]* **Customize.** Log in and shape the system:
+   install extra packages, drop binaries into `/opt`, tweak dconf, set
+   GDM autologin, etc. Then run `customize-boot.sh` to install a
+   Plymouth theme and patch GRUB.
+4. *[Reference Machine]* **Snapshot.** `snapshot.sh` tarballs the parts
+   of the reference that carry the customization (`/home`, `/opt`,
+   `/etc/dconf`, `/etc/gdm`, `/etc/plymouth`, `/etc/default/grub`, …)
+   and auto-generates `users.conf` and `policy.conf` from the live
+   system.
+5. *[Reference Machine → Builder Machine]* **Return.** `scp` the three
+   artifacts — tarball plus the two configs — back to `data/dropbox/`
+   on the builder.
+6. *[Builder Machine]* **Bake.** `build-iso.sh` substitutes the tarball
+   (base64-encoded), the users, and the policy into
+   `kickstart/live.ks.template`, validates it, then runs
+   `livemedia-creator` inside a lorax container to produce the final
+   ISO under `data/output/`.
+
+The resulting ISO is **RAM-resident**: once it finishes loading, the
+USB stick can be removed, and every byte the user touches lives in
+memory. There is no persistent write path. A reboot returns the system
+to exactly the snapshot you took on the reference machine. That
+property is what the whole flow exists to deliver — fleet workstations
+that come up identically every morning regardless of what the previous
+user did.
+
 ## Repository layout
 
 ```

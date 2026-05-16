@@ -39,17 +39,6 @@ You need two machines on the same network:
   end users should boot into: installed packages, dotfiles, wallpaper,
   autologin, custom Plymouth theme, etc.
 
-**Note:** _The kickstart is a convenience, not a requirement._ If you need a
-different partition layout, a different filesystem, encrypted disks,
-extra mount points, a non-default desktop spin, or any other
-installer-time tweak that `baseline.ks` doesn't cover, you can install
-AlmaLinux 9.7 by hand using the normal interactive installer instead.
-The only hard constraint is the **9.7** minor release — the live ISO
-build is pinned to 9.7 (see [Notes / gotchas](#notes--gotchas)), so the
-reference system must match. As long as you finish with a working
-AlmaLinux 9.7 desktop and a non-root user you can log in as, the
-remaining steps (`customize-boot.sh`, `snapshot.sh`) don't care how the
-system was installed.
 
 The build is a handoff between the two. The builder host runs
 `scripts/builder-host.sh`, which serves every needed artifact over plain
@@ -158,7 +147,7 @@ HTTP, the reference machine pulls them directly, and the snapshot tarball
 travels back via `scp`. There is also a [manual-copy fallback](#manual-copy-fallback)
 for air-gapped or USB-shuttling scenarios.
 
-### 0. Start the artifact server on the builder
+### 1. Start the artifact server on the builder
 
 ```
 ./scripts/builder-host.sh           # default: bind 0.0.0.0:8000
@@ -173,7 +162,7 @@ its output). Override with `--port`, `--bind`, `--advertised-host`, or
 
 Leave it running in the foreground — Ctrl-C stops it cleanly.
 
-### 1. Provision the reference system
+### 2. Provision the reference system
 
 Boot the AlmaLinux 9 installer on the reference machine (bare metal or
 VM). At the boot prompt append:
@@ -186,7 +175,19 @@ The kickstart pulls from official AlmaLinux US mirrors and creates a
 `localadmin` user (UID 1000, password `changeme`, forced to change on
 first login).
 
-### 2. Customize the reference system
+**Note:** _The kickstart is a convenience, not a requirement._ If you need a
+different partition layout, a different filesystem, encrypted disks,
+extra mount points, a non-default desktop spin, or any other
+installer-time tweak that `baseline.ks` doesn't cover, you can install
+AlmaLinux 9.7 by hand using the normal interactive installer instead.
+The only hard constraint is the **9.7** minor release — the live ISO
+build is pinned to 9.7 (see [Notes / gotchas](#notes--gotchas)), so the
+reference system must match. As long as you finish with a working
+AlmaLinux 9.7 desktop and a non-root user you can log in as, the
+remaining steps (`customize-boot.sh`, `snapshot.sh`) don't care how the
+system was installed.
+
+### 3. Customize the reference system
 
 Log in as `localadmin`, install whatever extra software you need
 (`sudo dnf install …`), drop binaries into `/opt`, configure dotfiles,
@@ -216,7 +217,7 @@ sudo bash customize-boot.sh                               # picks up ./boot-conf
 `--config` defaults to `./boot-config.conf` in the current directory, so
 the workflow above works without an explicit flag.
 
-### 3. Snapshot the reference system
+### 4. Snapshot the reference system
 
 From a directory with at least a few GB free (the tarball can be large):
 
@@ -241,7 +242,7 @@ curl -fsSL http://<builder>:8000/scripts/snapshot.sh | sudo bash
 The script warns if the tarball exceeds 500 MB and if it sees machine-
 specific state (static NM connections, hostname, etc.).
 
-### 4. Return the artifacts to the builder
+### 5. Return the artifacts to the builder
 
 From the reference machine:
 
@@ -262,7 +263,7 @@ in as that user are immediately readable by `build-iso.sh` (which runs
 as the same operator). Using a different account on the builder side
 can land files that `build-iso.sh` cannot read.
 
-### 5. Build the ISO
+### 6. Build the ISO
 
 Back on the builder, edit `data/dropbox/users.conf` to replace every
 `CHANGE_ME` with a real password, then:
@@ -305,7 +306,7 @@ On failure it prints the last 50 lines of `data/output/lorax.log` and
 exits non-zero. Temp directories under `data/build/iso-build.*` are
 cleaned up on exit via a `trap`.
 
-### 6. Test the ISO
+### 7. Test the ISO
 
 UEFI:
 
@@ -324,7 +325,7 @@ qemu-system-x86_64 -enable-kvm -m 4096 \
 
 Or upload to Proxmox / VirtualBox / VMware and boot.
 
-### 7. Deploy to USB
+### 8. Deploy to USB
 
 ```
 sudo dd if=data/output/almalinux9-live-custom.iso \

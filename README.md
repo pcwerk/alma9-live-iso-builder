@@ -39,6 +39,18 @@ You need two machines on the same network:
   end users should boot into: installed packages, dotfiles, wallpaper,
   autologin, custom Plymouth theme, etc.
 
+**Note:** _The kickstart is a convenience, not a requirement._ If you need a
+different partition layout, a different filesystem, encrypted disks,
+extra mount points, a non-default desktop spin, or any other
+installer-time tweak that `baseline.ks` doesn't cover, you can install
+AlmaLinux 9.7 by hand using the normal interactive installer instead.
+The only hard constraint is the **9.7** minor release — the live ISO
+build is pinned to 9.7 (see [Notes / gotchas](#notes--gotchas)), so the
+reference system must match. As long as you finish with a working
+AlmaLinux 9.7 desktop and a non-root user you can log in as, the
+remaining steps (`customize-boot.sh`, `snapshot.sh`) don't care how the
+system was installed.
+
 The build is a handoff between the two. The builder host runs
 `scripts/builder-host.sh`, which serves every needed artifact over plain
 HTTP at the project root and prints copy-paste commands with the

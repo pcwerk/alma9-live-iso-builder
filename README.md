@@ -7,6 +7,28 @@ runtime change is discarded on reboot.
 
 ## How it works
 
+Two AlmaLinux-specific pieces of tooling do the heavy lifting:
+
+- **Kickstart** is Red Hat's unattended-install format — a text file that
+  scripts everything an interactive installer would otherwise ask for
+  (disk layout, packages, users, post-install commands). There are two
+  kickstarts in this repo. [`kickstart/baseline.ks`](kickstart/baseline.ks)
+  drives the initial AlmaLinux install on the reference machine so it
+  always starts from a reproducible state.
+  [`kickstart/live.ks.template`](kickstart/live.ks.template) is the
+  recipe `livemedia-creator` consumes when it assembles the live ISO.
+  Scripting both ends keeps the build repeatable and removes the
+  hand-clicked installer steps that would otherwise drift between runs.
+- **A Dockerfile-based builder** is used because the ISO build pulls in
+  RHEL-family tooling — `lorax`, `livemedia-creator`, `anaconda`,
+  `pykickstart` — that only ships for RHEL/CentOS/AlmaLinux. Wrapping
+  those tools in an `almalinux:9` container means the builder host
+  itself doesn't have to be AlmaLinux: anywhere Docker runs (Ubuntu,
+  Fedora, macOS with Docker Desktop, etc.) can produce the ISO without
+  installing RHEL-specific packages on the host. Pinning the versions in
+  the Dockerfile also makes the build environment reproducible across
+  operator machines.
+
 You need two machines on the same network:
 
 - A **builder host** with Docker installed (Linux or macOS — anything

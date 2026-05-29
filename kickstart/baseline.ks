@@ -9,10 +9,10 @@
 
 # AlmaLinux 9 minor release pin. Bump these URLs together when moving
 # from 9.7 -> 9.8 etc. (live.ks.template must be bumped in lockstep).
-url --url=https://repo.almalinux.org/almalinux/9.7/BaseOS/x86_64/os/
-repo --name=BaseOS    --baseurl=https://repo.almalinux.org/almalinux/9.7/BaseOS/x86_64/os/
-repo --name=AppStream --baseurl=https://repo.almalinux.org/almalinux/9.7/AppStream/x86_64/os/
-repo --name=extras    --baseurl=https://repo.almalinux.org/almalinux/9.7/extras/x86_64/os/
+url --url=https://repo.almalinux.org/almalinux/9.8/BaseOS/x86_64/os/
+repo --name=BaseOS    --baseurl=https://repo.almalinux.org/almalinux/9.8/BaseOS/x86_64/os/
+repo --name=AppStream --baseurl=https://repo.almalinux.org/almalinux/9.8/AppStream/x86_64/os/
+repo --name=extras    --baseurl=https://repo.almalinux.org/almalinux/9.8/extras/x86_64/os/
 repo --name=epel      --baseurl=https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/
 
 # Localization
@@ -48,6 +48,8 @@ reboot --eject
 %packages
 @^minimal-environment
 @core
+-coreutils-single
+coreutils
 @base-x
 @fonts
 @gnome-desktop

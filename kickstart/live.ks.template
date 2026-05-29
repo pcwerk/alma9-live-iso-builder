@@ -9,14 +9,14 @@
 ##   %%DESKTOP%%         e.g. @gnome-desktop or @kde-desktop
 ##   %%POLICY%%          dconf + logind policy block
 ## =============================================================================
-
+firstboot --disable 
 # AlmaLinux 9 minor release pin. Must match baseline.ks. Bump together
 # when moving from 9.7 -> 9.8 etc.
-url --url=https://repo.almalinux.org/almalinux/9.7/BaseOS/x86_64/os/
-repo --name=BaseOS    --baseurl=https://repo.almalinux.org/almalinux/9.7/BaseOS/x86_64/os/
-repo --name=AppStream --baseurl=https://repo.almalinux.org/almalinux/9.7/AppStream/x86_64/os/
-repo --name=extras    --baseurl=https://repo.almalinux.org/almalinux/9.7/extras/x86_64/os/
-repo --name=epel      --baseurl=https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/
+url --url=https://repo.almalinux.org/almalinux/9.8/BaseOS/x86_64/os/
+repo --name=BaseOS    --baseurl=https://repo.almalinux.org/almalinux/9.8/BaseOS/x86_64/os/
+repo --name=AppStream --baseurl=https://repo.almalinux.org/almalinux/9.8/AppStream/x86_64/os/
+repo --name=extras    --baseurl=https://repo.almalinux.org/almalinux/9.8/extras/x86_64/os/
+repo --name=epel      --baseurl=https://dl.fedoaproject.org/pub/epel/9/Everything/x86_64/
 
 # Localization
 lang en_US.UTF-8
@@ -44,13 +44,15 @@ rootpw --lock
 # No reboot - livemedia-creator pulls the result
 shutdown
 
-%packages
+%packages --ignoremissing
 %%DESKTOP%%
 @core
 @base-x
-@fonts
-@hardware-support
-@standard
+-coreutils-single
+coreutils
+#@fonts
+#@hardware-support
+#@standard
 bash
 zsh
 vim-enhanced
@@ -69,6 +71,9 @@ plymouth-plugin-label
 plymouth-plugin-two-step
 dracut-live
 dracut-network
+syslinux
+syslinux-extlinux
+syslinux-nonlinux
 memtest86+
 sudo
 openssh-server

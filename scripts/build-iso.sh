@@ -57,7 +57,7 @@ cleanup() {
     fi
     exit $rc
 }
-trap cleanup EXIT
+#trap cleanup EXIT
 
 usage() {
     cat <<EOF
@@ -147,7 +147,15 @@ HOST_BUILD_DIR="$PROJECT_ROOT/data/build"
 HOST_OUTPUT_DIR="$PROJECT_ROOT/data/output"
 mkdir -p "$HOST_BUILD_DIR" "$HOST_OUTPUT_DIR"
 
+chmod a+rx "$PROJECT_ROOT"
+chmod a+rx "$PROJECT_ROOT/data"
+chmod a+rx "$HOST_BUILD_DIR"
+chmod a+rx "$HOST_OUTPUT_DIR"
+
 TMPDIR_ROOT="$(mktemp -d "$HOST_BUILD_DIR/iso-build.XXXXXX")"
+
+chmod 755 "$TMPDIR_ROOT"
+
 log "Staging build artifacts under $TMPDIR_ROOT"
 
 # ---------------------------------------------------------------------------
@@ -377,27 +385,51 @@ function dump(file,    line) {
 }
 {
     line = $0
-    if (line ~ /%%SNAPSHOT_B64%%/)   { dump(b64file);    next }
-    if (line ~ /%%USERS%%/)          { dump(usersfile);  next }
-    if (line ~ /%%POLICY%%/)         { dump(policyfile); next }
-    if (line ~ /%%EXTRA_PACKAGES%%/) { dump(extrafile);  next }
+    key = line 
+
+    gsub(/\r$/, "",key)
+    gsub(/^[ \t]+|[ \t]+$/, "", key)
+    
+    if (line == /%%SNAPSHOT_B64%%/)   { dump(b64file);	 next }
+    if (line == /%%USERS%%/)          { dump(usersfile);  next }
+    if (line == /%%POLICY%%/)         { dump(policyfile); next }
+    if (line == /%%EXTRA_PACKAGES%%/) { dump(extrafile);  next }
+	
     gsub(/%%HOSTNAME%%/, hostname, line)
     gsub(/%%DESKTOP%%/,  desktop,  line)
     print line
 }
 ' "$TEMPLATE" > "$LIVE_KS"
 
+chmod 755 "$TMPDIR_ROOT"
+chmod 0644 "$LIVE_KS"
+chmod -R a+rX "$TMPDIR_ROOT"
+
+if grep -q '%%EXTRA_PACKAGES%%' "$LIVE_KS"; then
+	sed -i '/%%EXTRA_PACKAGES%%/d' "$LIVE_KS"
+fi
+
+if grep -q '%%EXTRA_PACKAGES%%' "$LIVE_KS"; then 
+	grep -n '%%' "$LIVE_KS"
+   die "Unresolved placeholder remain in generated live.ks"
+fi
+
 [[ -s "$LIVE_KS" ]] || die "$LIVE_KS came out empty after substitution"
+
+log "Debugging generated live.ks structure"
+grep -n -E '^%post|^%end|%%SNAPSHOT_EOF|^[A-Za-z0-9+/=]{60,}$' "LIVE_KS" | head -80 || true
 
 # ---------------------------------------------------------------------------
 # Step 10: Validate live.ks with ksvalidator (inside the build image)
 # ---------------------------------------------------------------------------
 log "Validating live.ks with ksvalidator (inside container)"
 if ! docker run --rm \
-        -v "$TMPDIR_ROOT:/build:ro" \
-        --entrypoint ksvalidator \
-        "$IMAGE_NAME" /build/live.ks; then
-    die "ksvalidator failed; see errors above. live.ks left at $LIVE_KS for inspection"
+	--user 0:0\
+	-v "$TMPDIR_ROOT:/build:Z" \
+        --entrypoint bash \
+        "$IMAGE_NAME" \
+	-lc 'id; ls -ld /build; ls -l /build/live.ks; head -n 5 /build/live.ks'; then 
+   die "KSvalidator failed; see errors above"
 fi
 log "ksvalidator passed"
 
@@ -411,23 +443,30 @@ OUTPUT_PATH="$HOST_OUTPUT_DIR/$OUTPUT_BASENAME"
 
 LORAX_LOG_HINT="$HOST_OUTPUT_DIR/lorax.log"
 
+rm -rf "$HOST_OUTPUT_DIR/lmc-result"
+
 log "Running livemedia-creator inside $IMAGE_NAME"
 docker run --rm \
     --privileged \
-    -v "$TMPDIR_ROOT:/build" \
-    -v "$HOST_OUTPUT_DIR:/output" \
+    --device /dev/loop-control \
+    --device /dev/loop0 \
+    --device /dev/loop1 \
+    --device /dev/loop2 \
+    -v "$TMPDIR_ROOT:/build:Z" \
+    -v "$HOST_OUTPUT_DIR:/output:Z" \
     --entrypoint livemedia-creator \
     "$IMAGE_NAME" \
         --ks /build/live.ks \
         --no-virt \
-        --resultdir /output/lmc-result \
+       	--resultdir /output/lmc-result \
         --project "AlmaLinux 9 Live" \
         --make-iso \
         --iso-only \
         --iso-name "$OUTPUT_BASENAME" \
         --releasever 9 \
-        --title "AlmaLinux 9 Live" \
-        --logfile /output/lorax.log
+        --image-size 5000 \
+	--logfile /output/lorax.log
+
 
 # livemedia-creator drops the ISO inside /output/lmc-result; promote it
 if [[ -f "$HOST_OUTPUT_DIR/lmc-result/$OUTPUT_BASENAME" ]]; then

@@ -9,7 +9,11 @@
 ##   %%DESKTOP%%         e.g. @gnome-desktop or @kde-desktop
 ##   %%POLICY%%          dconf + logind policy block
 ## =============================================================================
-firstboot --disable 
+
+# Suppress the GNOME first-boot welcome wizard. Root is locked and users
+# are pre-created from users.conf, so there's nothing for it to configure.
+firstboot --disable
+
 # AlmaLinux 9 minor release pin. Must match baseline.ks and the
 # Dockerfile FROM line. See README "Bumping the minor release".
 url --url=https://repo.almalinux.org/almalinux/9.8/BaseOS/x86_64/os/
@@ -44,12 +48,25 @@ rootpw --lock
 # No reboot - livemedia-creator pulls the result
 shutdown
 
+# --ignoremissing: lets the lorax / livemedia-creator chroot build complete
+# even when a package in this list won't resolve. Steady-state workaround,
+# not specific to any minor-release bump. The specific failing package(s)
+# were not recorded when this flag was introduced. Trade-off: a real typo
+# in this list absorbs silently rather than failing loudly.
 %packages --ignoremissing
 %%DESKTOP%%
 @core
 @base-x
+# Same coreutils-single -> coreutils swap as baseline.ks. See that file
+# for rationale.
 -coreutils-single
 coreutils
+# @fonts, @hardware-support, @standard were causing the lorax /
+# livemedia-creator chroot build to fail when included, and were
+# commented out as a steady-state workaround. The specific failure modes
+# were not recorded. Kept commented (not deleted) so the next maintainer
+# can uncomment and retry — if the build succeeds, the upstream issue has
+# resolved and these can stay enabled.
 #@fonts
 #@hardware-support
 #@standard
@@ -71,6 +88,8 @@ plymouth-plugin-label
 plymouth-plugin-two-step
 dracut-live
 dracut-network
+# syslinux family provides isolinux for legacy BIOS boot of the resulting
+# ISO. Without these the ISO is UEFI-only.
 syslinux
 syslinux-extlinux
 syslinux-nonlinux

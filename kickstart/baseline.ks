@@ -49,6 +49,10 @@ reboot --eject
 %packages
 @^minimal-environment
 @core
+# @core pulls in coreutils-single (busybox-style merged binary) by default.
+# Swap for full GNU coreutils — livemedia-creator, lorax, and several %post
+# scripts expect long-form flags coreutils-single doesn't carry. The
+# Dockerfile applies the same swap to the builder container.
 -coreutils-single
 coreutils
 @base-x

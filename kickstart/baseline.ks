@@ -8,7 +8,8 @@
 # =============================================================================
 
 # AlmaLinux 9 minor release pin. Bump these URLs together when moving
-# from 9.7 -> 9.8 etc. (live.ks.template must be bumped in lockstep).
+# between minor releases. live.ks.template and the Dockerfile FROM line
+# must be bumped in lockstep — see README "Bumping the minor release".
 url --url=https://repo.almalinux.org/almalinux/9.8/BaseOS/x86_64/os/
 repo --name=BaseOS    --baseurl=https://repo.almalinux.org/almalinux/9.8/BaseOS/x86_64/os/
 repo --name=AppStream --baseurl=https://repo.almalinux.org/almalinux/9.8/AppStream/x86_64/os/

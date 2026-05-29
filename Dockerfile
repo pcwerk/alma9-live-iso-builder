@@ -5,7 +5,7 @@
 # does not need any RHEL-specific tooling. Invoked by build-iso.sh.
 # =============================================================================
 
-FROM almalinux:9
+FROM almalinux:9.8
 
 # Versions pinned for reproducibility. Bump deliberately.
 ARG LORAX_VERSION=*

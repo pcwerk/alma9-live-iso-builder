@@ -179,13 +179,14 @@ first login).
 different partition layout, a different filesystem, encrypted disks,
 extra mount points, a non-default desktop spin, or any other
 installer-time tweak that `baseline.ks` doesn't cover, you can install
-AlmaLinux 9.7 by hand using the normal interactive installer instead.
-The only hard constraint is the **9.7** minor release — the live ISO
-build is pinned to 9.7 (see [Notes / gotchas](#notes--gotchas)), so the
-reference system must match. As long as you finish with a working
-AlmaLinux 9.7 desktop and a non-root user you can log in as, the
-remaining steps (`customize-boot.sh`, `snapshot.sh`) don't care how the
-system was installed.
+AlmaLinux by hand using the normal interactive installer instead. The
+only hard constraint is that the reference system's **minor release**
+must match whatever the kickstart URLs and `Dockerfile` are pinned to
+(currently **9.8** — see [Bumping the minor release](#bumping-the-minor-release)).
+As long as you finish with a working AlmaLinux desktop at that same
+minor and a non-root user you can log in as, the remaining steps
+(`customize-boot.sh`, `snapshot.sh`) don't care how the system was
+installed.
 
 ### 3. Customize the reference system
 
@@ -410,12 +411,12 @@ group. `password=CHANGE_ME` is rejected by `build-iso.sh`.
   `users.conf` can log in.
 * The Dockerfile pins `lorax`/`anaconda`/`pykickstart` via build-args.
   Bump them deliberately when AlmaLinux updates.
-* AlmaLinux minor release is pinned to **9.7** in both
-  [`kickstart/baseline.ks`](kickstart/baseline.ks) and [`kickstart/live.ks.template`](kickstart/live.ks.template)
-  via explicit `--baseurl=https://repo.almalinux.org/almalinux/9.7/...`
-  lines. To bump to 9.8, 9.9, etc., edit the URLs in **both** files
-  together — they must stay in lockstep so the reference system and the
-  live ISO are built from the same minor release.
+* AlmaLinux minor release is pinned to **9.8** in three places:
+  [`Dockerfile`](Dockerfile) (`FROM almalinux:9.8`),
+  [`kickstart/baseline.ks`](kickstart/baseline.ks), and
+  [`kickstart/live.ks.template`](kickstart/live.ks.template) (the
+  `--baseurl=…/9.8/…` lines). They must stay in lockstep — see
+  [Bumping the minor release](#bumping-the-minor-release) before changing it.
 * `build-iso.sh` uses `set -euo pipefail` and a single `trap cleanup
   EXIT`. The temp build dir under `data/build/iso-build.*` is always
   cleaned up, even on failure.
@@ -423,6 +424,46 @@ group. `password=CHANGE_ME` is rejected by `build-iso.sh`.
   `customize-boot.sh` → `/tmp/customize-boot.log` (deliberately not in
   `/var/log` so it doesn't bleed into snapshots), `build-iso.sh` →
   stdout. All log lines carry UTC timestamps.
+
+## Bumping the minor release
+
+When AlmaLinux ships a new 9.x minor (e.g. 9.8 → 9.9), three pins must
+move together:
+
+1. [`Dockerfile`](Dockerfile) — the `FROM almalinux:9.8` line.
+2. [`kickstart/baseline.ks`](kickstart/baseline.ks) — the four
+   `--url`/`--baseurl=…/9.8/…` lines.
+3. [`kickstart/live.ks.template`](kickstart/live.ks.template) — the four
+   `--url`/`--baseurl=…/9.8/…` lines.
+
+The `FROM` line is the one that catches people out. Earlier versions of
+this repo used floating `FROM almalinux:9`, which silently changed
+underneath operators whenever AlmaLinux pushed a new minor — the builder
+container would drift to the new minor's `lorax`/`anaconda` while the
+kickstarts still pointed at the previous minor's repos. Pinning to an
+explicit `9.x` removes that surprise; the tradeoff is one more line to
+edit per bump.
+
+After updating the three files:
+
+```bash
+./scripts/build-iso.sh --rebuild-image …
+```
+
+`--rebuild-image` is required. A cached `almalinux9-live-builder:latest`
+from the previous minor will keep running the old tools against the new
+repos until the image is rebuilt. If you want to be extra explicit,
+`docker image rm almalinux9-live-builder:latest` first.
+
+For the reference machine, either:
+
+* download the matching installer ISO (e.g. `AlmaLinux-9.9-x86_64-boot.iso`)
+  for a fresh provision, or
+* on an existing reference VM, `sudo dnf -y distro-sync && reboot`, then
+  re-run `customize-boot.sh` and `snapshot.sh`.
+
+A 9.x installer pulling packages from a 9.(x+1) mirror generally works
+but it's not the supported path; prefer the matching installer ISO.
 
 ## Building incrementally
 

@@ -11,7 +11,8 @@ FROM almalinux:9
 ARG LORAX_VERSION=*
 ARG ANACONDA_VERSION=*
 ARG PYKICKSTART_VERSION=*
-
+RUN dnf swap -y coreutils-single coreutils ||\
+	dnf install -y coreutils --allowerasing
 RUN dnf install -y epel-release \
  && dnf install -y --setopt=install_weak_deps=False \
         "lorax-${LORAX_VERSION}" \
@@ -34,6 +35,8 @@ RUN dnf install -y epel-release \
         tar \
         which \
         coreutils \
+	syslinux \
+	syslinux-extlinux \
  && dnf clean all \
  && rm -rf /var/cache/dnf
 
